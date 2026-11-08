@@ -8,6 +8,7 @@ $csrf = $_SESSION['csrf'];
 $loggedIn = $_SESSION['authenticated'] ?? false;
 $error = '';
 $concerts = $messages = $settings = [];
+$today = (new DateTimeImmutable('today', new DateTimeZone('Europe/Paris')))->format('Y-m-d');
 $links = ['clip' => 'Clip YouTube', 'instagram' => 'Instagram', 'facebook' => 'Facebook', 'bandcamp' => 'Bandcamp', 'background' => 'Vidéo de fond'];
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -73,6 +74,7 @@ try {
 }
 if ($loggedIn) {
     try {
+        importArchivedConcerts(db());
         $concerts = db()->query('SELECT * FROM trylob_concerts ORDER BY date DESC, id DESC')->fetchAll(PDO::FETCH_ASSOC);
         $messages = db()->query('SELECT * FROM trylob_messages ORDER BY id DESC')->fetchAll(PDO::FETCH_ASSOC);
         $settings = db()->query('SELECT name, value FROM trylob_settings')->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -114,12 +116,23 @@ button{padding:.5rem .8rem;cursor:pointer} .message{white-space:pre-wrap;overflo
     <button name="action" value="logout">Déconnexion</button>
 </form>
 <h2 id="concerts">Concerts</h2>
-<?php foreach (array_merge([['id'=>0,'date'=>'','venue'=>'','city'=>'','url'=>'']], $concerts) as $concert): ?>
+<?php
+$upcoming = array_filter($concerts, static fn($concert) => $concert['date'] >= $today);
+$archived = array_filter($concerts, static fn($concert) => $concert['date'] < $today);
+$newConcert = ['id'=>0,'date'=>'','venue'=>'','city'=>'','url'=>''];
+foreach ([array_merge([$newConcert], array_reverse($upcoming)), $archived] as $group => $entries):
+?>
+<?php if ($group === 1): ?>
+<details class="concert-entry">
+    <summary>Anciennes dates (<?= count($entries) ?>)</summary>
+    <?php if (!$entries): ?><p>Aucune ancienne date.</p><?php endif ?>
+<?php endif ?>
+<?php foreach ($entries as $concert): ?>
 <?php if ($concert['id']): ?>
 <details class="concert-entry">
     <summary><?= h($concert['date']) ?> · <?= h($concert['venue']) ?> · <?= h($concert['city']) ?> <span>Modifier</span></summary>
 <?php endif ?>
-<form method="post">
+<form method="post"<?= $concert['id'] ? '' : ' id="new-concert"' ?>>
     <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
     <input type="hidden" name="id" value="<?= (int)$concert['id'] ?>">
     <label>Date <input type="date" name="date" required value="<?= h($concert['date']) ?>"></label>
@@ -133,6 +146,17 @@ button{padding:.5rem .8rem;cursor:pointer} .message{white-space:pre-wrap;overflo
 </form>
 <?php if ($concert['id']): ?></details><?php endif ?>
 <?php endforeach ?>
+<?php if ($group === 1): ?></details><?php endif ?>
+<?php endforeach ?>
+<script>
+document.getElementById('new-concert').addEventListener('submit', event => {
+    const date = event.currentTarget.elements.date.value;
+    const today = new Intl.DateTimeFormat('sv-SE', {timeZone: 'Europe/Paris'}).format(new Date());
+    if (date && date < today && !window.confirm('Cette date est passée. Ajouter quand même ce concert ?')) {
+        event.preventDefault();
+    }
+});
+</script>
 <h2>Liens du site</h2>
 <form method="post">
     <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
