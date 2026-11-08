@@ -56,7 +56,7 @@ footer{flex-wrap:wrap}
 @media(max-width:600px){:root{--header-h:72px}.hero-top{padding:22px 6% 0}.hero-content{padding:18px 6% 32px}.hero h1{font-size:18vw}.form-grid{grid-template-columns:1fr;gap:0}.contact-form{margin-top:30px}footer .brand{margin-right:0}footer{gap:20px}.hero-bottom{align-items:flex-start}}
 /* Keep the full-width video flush with the fixed navigation. */
 body{padding-top:var(--header-h)}
-body>div header{position:fixed;top:0;left:0;right:0;margin:0}
+body>header{position:fixed;top:0;left:0;right:0;margin:0}
 .hero-media{top:var(--header-h);margin:0;padding:0;pointer-events:none}
 .video-space{margin:0;padding:0}
 /* Dark translucent layers preserve both the moving image and text contrast. */

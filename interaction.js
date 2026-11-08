@@ -18,7 +18,6 @@ const root=document.querySelector("#entrance");
    content.forEach((node,i)=>{node.inert=previous[i]});
    root.hidden=true;
    document.removeEventListener("keydown",onKey);
-   window.removeEventListener("resize",finish);
    reduced.removeEventListener("change",onMotion);
    if(restoreFocus)document.querySelector('header .brand')?.focus({preventScroll:true});
   };
@@ -26,7 +25,6 @@ const root=document.querySelector("#entrance");
   const onKey=(event)=>{if(event.key==='Escape')finish()};
   const onMotion=()=>{if(reduced.matches)finish()};
   document.addEventListener('keydown',onKey);
-  window.addEventListener('resize',finish);
   reduced.addEventListener('change',onMotion);
   // Hash links, restored scroll positions and reduced motion open straight on the content.
   if(reduced.matches||window.location.hash||window.scrollY>10){finish()}
