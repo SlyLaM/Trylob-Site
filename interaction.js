@@ -75,10 +75,15 @@ contactNotice.setAttribute('role', 'status');
 const contactNoticeText = document.createElement('span');
 Object.assign(contactNoticeText.style, {
   position: 'fixed',
-  right: '1rem',
-  bottom: 'max(1rem, env(safe-area-inset-bottom))',
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  width: 'min(26rem, calc(100vw - 2rem))',
+  textAlign: 'center',
+  fontSize: 'clamp(1.25rem, 5vw, 1.75rem)',
+  fontWeight: '700',
   zIndex: '50',
-  padding: '0.75rem 1rem',
+  padding: 'clamp(1.5rem, 6vw, 2.5rem) 1rem',
   border: '1px solid #ffda2d',
   background: '#080808',
   color: '#ffda2d',
@@ -88,6 +93,7 @@ contactNoticeText.hidden = true;
 contactNotice.append(contactNoticeText);
 document.body.append(contactNotice);
 let contactNoticeTimer;
+let contactNoticeFade;
 let contactTrigger;
 document.querySelectorAll('a[href="#contact-form"]').forEach(link => {
   link.addEventListener('click', event => {
@@ -121,12 +127,23 @@ contactForm.addEventListener('submit', async event => {
     status.textContent = '';
     contactDialog.close();
     clearTimeout(contactNoticeTimer);
+    contactNoticeFade?.cancel();
     contactNoticeText.hidden = false;
     contactNoticeText.textContent = 'Message envoyé';
+    const fadeDuration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 450;
+    if (fadeDuration && contactNoticeText.animate) {
+      contactNoticeFade = contactNoticeText.animate([{opacity: 1}, {opacity: 0}], {
+        delay: 4000,
+        duration: fadeDuration,
+        easing: 'ease-out',
+        fill: 'forwards',
+      });
+    }
     contactNoticeTimer = setTimeout(() => {
       contactNoticeText.textContent = '';
       contactNoticeText.hidden = true;
-    }, 4000);
+      contactNoticeFade?.cancel();
+    }, 4000 + (contactNoticeText.animate ? fadeDuration : 0));
   } catch (error) {
     status.textContent = error.message || 'Envoi impossible. Réessayez.';
   } finally {
