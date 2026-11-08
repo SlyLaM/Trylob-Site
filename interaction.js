@@ -26,8 +26,8 @@ const root=document.querySelector("#entrance");
   const onMotion=()=>{if(reduced.matches)finish()};
   document.addEventListener('keydown',onKey);
   reduced.addEventListener('change',onMotion);
-  // Hash links, restored scroll positions and reduced motion open straight on the content.
-  if(reduced.matches||window.location.hash||window.scrollY>10){finish()}
+  // Hash links and reduced motion open straight on the content.
+  if(reduced.matches||window.location.hash){finish()}
   else{
    root.hidden=false;
    document.documentElement.classList.add('intro-running');
@@ -36,22 +36,24 @@ const root=document.querySelector("#entrance");
    timers.push(setTimeout(finish,4800));
    const start=async()=>{
     const image=new Image();image.src='assets/trylob-logo-stage.png';
-    await Promise.race([image.decode().catch(()=>{}),new Promise(resolve=>timers.push(setTimeout(resolve,900)))]);
+    const ready = typeof image.decode === 'function' ? image.decode() : Promise.resolve();
+    await Promise.race([ready.catch(() => {}), new Promise(resolve => timers.push(setTimeout(resolve, 900)))]);
     if(stopped)return;
     if(!root.animate){finish();return;}
     const mark=root.querySelector('.entrance-mark');
     const target=document.querySelector('header .brand');
     if(!mark||!target){finish();return;}
     root.querySelectorAll('.entrance-strip').forEach((strip,i)=>{
-     animations.push(strip.animate([{transform:`translateX(${i%2===0?'-':' '}105%)`,opacity:0},{transform:'translateX(0)',opacity:1}],{duration:680,delay:i*100,easing:'cubic-bezier(.22,1,.36,1)',fill:'both'}));
+     animations.push(strip.animate([{transform:`translateX(${i%2===0?'-':''}105%)`,opacity:0},{transform:'translateX(0)',opacity:1}],{duration:680,delay:i*100,easing:'cubic-bezier(.22,1,.36,1)',fill:'both'}));
     });
     timers.push(setTimeout(()=>{
      if(stopped)return;
      const from=mark.getBoundingClientRect(),to=target.getBoundingClientRect();
-     const scale=to.width/from.width;
+     const scaleX = to.width / from.width;
+     const scaleY = to.height / from.height;
      animations.push(mark.animate([
       {transform:'translate(-50%,-50%) scale(1)'},
-      {transform:`translate(calc(-50% + ${to.left-from.left}px),calc(-50% + ${to.top-from.top}px)) scale(${scale})`}
+      {transform:`translate(calc(-50% + ${to.left-from.left}px),calc(-50% + ${to.top-from.top}px)) scale(${scaleX}, ${scaleY})`}
      ],{duration:1100,easing:'cubic-bezier(.76,0,.24,1)',fill:'forwards'}));
      root.querySelectorAll('.entrance-shutter').forEach((shutter,i)=>{
       animations.push(shutter.animate([{transform:'translateX(0)'},{transform:`translateX(${i%2===0?'-':''}102%)`}],{duration:1050,delay:i*35,easing:'cubic-bezier(.76,0,.24,1)',fill:'forwards'}));
