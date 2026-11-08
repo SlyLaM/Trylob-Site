@@ -91,6 +91,9 @@ body{background:#101010;color:#eee;font:16px system-ui;margin:2rem auto;max-widt
 a{color:#ffda2d} form,article{border:1px solid #444;padding:1rem;margin:1rem 0}
 label{display:block;margin-bottom:.65rem} input{display:block;width:min(100%,36rem);padding:.4rem;box-sizing:border-box}
 button{padding:.5rem .8rem;cursor:pointer} .message{white-space:pre-wrap;overflow-wrap:anywhere}
+.message-actions{display:flex;justify-content:flex-end;margin:.75rem 0 0;padding:0;border:0}
+.message-actions button{background:transparent;color:#ffaaaa;border:1px solid #995050;border-radius:4px;font:inherit;font-size:.875rem}
+.message-actions button:hover,.message-actions button:focus-visible{background:#351c1c;border-color:#ffaaaa}
 </style>
 <a href="./">Retour au site</a>
 <h1>Espace groupe</h1>
@@ -136,7 +139,7 @@ button{padding:.5rem .8rem;cursor:pointer} .message{white-space:pre-wrap;overflo
     <h3><?= h($message['subject']) ?></h3>
     <p><?= h($message['created']) ?> · <?= h($message['name']) ?> · <a href="mailto:<?= h($message['email']) ?>"><?= h($message['email']) ?></a></p>
     <p class="message"><?= h($message['message']) ?></p>
-    <form method="post" onsubmit="return confirm('Supprimer définitivement ce message ?')">
+    <form class="message-actions" method="post" onsubmit="return confirm('Supprimer définitivement ce message ?')">
         <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
         <input type="hidden" name="id" value="<?= (int)$message['id'] ?>">
         <button type="submit" name="action" value="remove_message">Supprimer le message</button>
