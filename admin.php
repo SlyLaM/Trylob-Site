@@ -94,6 +94,10 @@ button{padding:.5rem .8rem;cursor:pointer} .message{white-space:pre-wrap;overflo
 .message-actions{display:flex;justify-content:flex-end;margin:.75rem 0 0;padding:0;border:0}
 .message-actions button{background:transparent;color:#ffaaaa;border:1px solid #995050;border-radius:4px;font:inherit;font-size:.875rem}
 .message-actions button:hover,.message-actions button:focus-visible{background:#351c1c;border-color:#ffaaaa}
+.concert-entry{border:1px solid #444;margin:1rem 0}
+.concert-entry summary{cursor:pointer;padding:1rem;overflow-wrap:anywhere}
+.concert-entry summary span{color:#ffda2d;margin-inline-start:.75rem}
+.concert-entry form{margin:0;border:0;border-top:1px solid #444}
 </style>
 <a href="./">Retour au site</a>
 <h1>Espace groupe</h1>
@@ -109,8 +113,12 @@ button{padding:.5rem .8rem;cursor:pointer} .message{white-space:pre-wrap;overflo
     <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
     <button name="action" value="logout">Déconnexion</button>
 </form>
-<h2>Concerts</h2>
+<h2 id="concerts">Concerts</h2>
 <?php foreach (array_merge([['id'=>0,'date'=>'','venue'=>'','city'=>'','url'=>'']], $concerts) as $concert): ?>
+<?php if ($concert['id']): ?>
+<details class="concert-entry">
+    <summary><?= h($concert['date']) ?> · <?= h($concert['venue']) ?> · <?= h($concert['city']) ?> <span>Modifier</span></summary>
+<?php endif ?>
 <form method="post">
     <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
     <input type="hidden" name="id" value="<?= (int)$concert['id'] ?>">
@@ -118,11 +126,12 @@ button{padding:.5rem .8rem;cursor:pointer} .message{white-space:pre-wrap;overflo
     <label>Lieu <input name="venue" required maxlength="160" value="<?= h($concert['venue']) ?>"></label>
     <label>Ville <input name="city" required maxlength="160" value="<?= h($concert['city']) ?>"></label>
     <label>Lien <input type="url" name="url" maxlength="2048" value="<?= h($concert['url']) ?>"></label>
-    <button name="action" value="save"><?= $concert['id'] ? 'Enregistrer' : 'Ajouter un concert' ?></button>
+    <button name="action" value="save"><?= $concert['id'] ? 'Enregistrer les modifications' : 'Ajouter un concert' ?></button>
     <?php if ($concert['id']): ?>
-    <button name="action" value="remove" formnovalidate onclick="return confirm('Supprimer cette date ?')">Supprimer</button>
+    <button name="action" value="remove" formnovalidate onclick="return confirm('Supprimer cette date ?')">Supprimer le concert</button>
     <?php endif ?>
 </form>
+<?php if ($concert['id']): ?></details><?php endif ?>
 <?php endforeach ?>
 <h2>Liens du site</h2>
 <form method="post">
