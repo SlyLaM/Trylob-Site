@@ -70,6 +70,24 @@ const root=document.querySelector("#entrance");
 
 const contactDialog = document.querySelector('dialog');
 const contactForm = document.querySelector('#contact-form');
+const contactNotice = document.createElement('div');
+contactNotice.setAttribute('role', 'status');
+const contactNoticeText = document.createElement('span');
+Object.assign(contactNoticeText.style, {
+  position: 'fixed',
+  right: '1rem',
+  bottom: 'max(1rem, env(safe-area-inset-bottom))',
+  zIndex: '50',
+  padding: '0.75rem 1rem',
+  border: '1px solid #ffda2d',
+  background: '#080808',
+  color: '#ffda2d',
+  pointerEvents: 'none',
+});
+contactNoticeText.hidden = true;
+contactNotice.append(contactNoticeText);
+document.body.append(contactNotice);
+let contactNoticeTimer;
 let contactTrigger;
 document.querySelectorAll('a[href="#contact-form"]').forEach(link => {
   link.addEventListener('click', event => {
@@ -92,6 +110,7 @@ contactForm.addEventListener('submit', async event => {
   event.preventDefault();
   const button = contactForm.querySelector('[type="submit"]');
   const status = contactForm.querySelector('[role="status"]');
+  if (button.disabled) return;
   button.disabled = true;
   status.textContent = 'Envoi en cours…';
   try {
@@ -99,7 +118,15 @@ contactForm.addEventListener('submit', async event => {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
     contactForm.reset();
-    status.textContent = 'Merci ! Votre demande a été enregistrée dans l’espace privé de Trylob.';
+    status.textContent = '';
+    contactDialog.close();
+    clearTimeout(contactNoticeTimer);
+    contactNoticeText.hidden = false;
+    contactNoticeText.textContent = 'Message envoyé';
+    contactNoticeTimer = setTimeout(() => {
+      contactNoticeText.textContent = '';
+      contactNoticeText.hidden = true;
+    }, 4000);
   } catch (error) {
     status.textContent = error.message || 'Envoi impossible. Réessayez.';
   } finally {
