@@ -23,3 +23,4 @@ Write-Output "Valeur admin_hash : $hash"
 ```
 
 L’espace groupe utilise une clé partagée. Les messages sont enregistrés en base et consultables dans cet espace. Il n’y a pas d’envoi d’e-mail. Les dates et messages éventuellement enregistrés sur Cloudflare restent dans D1 et doivent être repris séparément si nécessaire. Les deux dates historiques visibles dans le site sont déjà dans la page.
+#
