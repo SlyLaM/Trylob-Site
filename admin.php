@@ -45,6 +45,8 @@ try {
             }
         } elseif ($action === 'remove') {
             db()->prepare('DELETE FROM trylob_concerts WHERE id=?')->execute([(int)field('id')]);
+        } elseif ($action === 'remove_message') {
+            db()->prepare('DELETE FROM trylob_messages WHERE id=?')->execute([(int)field('id')]);
         } elseif ($action === 'settings') {
             $values = [];
             foreach ($links as $key => $label) {
@@ -60,7 +62,7 @@ try {
             foreach ($values as $key => $value) $query->execute([$key, $value, $value]);
             $db->commit();
         }
-        header('Location: admin.php', true, 303);
+        header($action === 'remove_message' ? 'Location: admin.php#messages' : 'Location: admin.php', true, 303);
         exit;
     }
 } catch (DomainException $problem) {
@@ -127,13 +129,18 @@ button{padding:.5rem .8rem;cursor:pointer} .message{white-space:pre-wrap;overflo
     <?php endforeach ?>
     <button name="action" value="settings">Enregistrer les liens</button>
 </form>
-<h2>Messages reçus</h2>
+<h2 id="messages">Messages reçus</h2>
 <?php if (!$messages): ?><p>Aucun message.</p><?php endif ?>
 <?php foreach ($messages as $message): ?>
 <article>
     <h3><?= h($message['subject']) ?></h3>
     <p><?= h($message['created']) ?> · <?= h($message['name']) ?> · <a href="mailto:<?= h($message['email']) ?>"><?= h($message['email']) ?></a></p>
     <p class="message"><?= h($message['message']) ?></p>
+    <form method="post" onsubmit="return confirm('Supprimer définitivement ce message ?')">
+        <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+        <input type="hidden" name="id" value="<?= (int)$message['id'] ?>">
+        <button type="submit" name="action" value="remove_message">Supprimer le message</button>
+    </form>
 </article>
 <?php endforeach ?>
 <?php endif ?>
