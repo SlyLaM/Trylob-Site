@@ -112,15 +112,103 @@ function syncDialogViewport() {
 window.visualViewport?.addEventListener('resize', syncDialogViewport);
 window.visualViewport?.addEventListener('scroll', syncDialogViewport);
 syncDialogViewport();
+const captchaCheck = document.querySelector('#contact-captcha-check');
+const captchaContainer = document.querySelector('#contact-captcha-widget');
+const captchaStatus = document.querySelector('#contact-captcha-status');
+let captchaWidget;
+let captchaToken = '';
+
+function clearCaptcha(message = '') {
+  captchaToken = '';
+  captchaCheck.checked = false;
+  captchaCheck.disabled = false;
+  captchaStatus.textContent = message;
+}
+
+function loadTurnstile() {
+  if (window.turnstile) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    const timeout = setTimeout(fail, 8000);
+    function fail() {
+      clearTimeout(timeout);
+      delete window.onTrylobTurnstileReady;
+      script.remove();
+      reject(new Error('Turnstile indisponible'));
+    }
+    window.onTrylobTurnstileReady = () => {
+      clearTimeout(timeout);
+      delete window.onTrylobTurnstileReady;
+      resolve();
+    };
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTrylobTurnstileReady';
+    script.async = true;
+    script.onerror = fail;
+    document.head.append(script);
+  });
+}
+
+captchaCheck.addEventListener('change', async () => {
+  if (!captchaCheck.checked) {
+    clearCaptcha();
+    return;
+  }
+
+  captchaCheck.disabled = true;
+  captchaStatus.textContent = 'Vérification en cours…';
+  contactForm.querySelector('.contact-status').textContent = '';
+  try {
+    if (captchaWidget === undefined) {
+      const response = await fetch('api/contact.php', {signal: AbortSignal.timeout(8000)});
+      if (!response.ok) throw new Error('Configuration Turnstile indisponible');
+      const {siteKey} = await response.json();
+      await loadTurnstile();
+      captchaWidget = window.turnstile.render(captchaContainer, {
+        sitekey: siteKey,
+        action: 'contact',
+        theme: 'dark',
+        size: 'compact',
+        execution: 'execute',
+        appearance: 'execute',
+        retry: 'never',
+        'refresh-expired': 'never',
+        'response-field': false,
+        callback(token) {
+          captchaToken = token;
+          captchaCheck.disabled = false;
+          captchaStatus.textContent = 'Vérification réussie.';
+        },
+        'error-callback': () => clearCaptcha('Vérification indisponible. Cochez à nouveau la case.'),
+        'timeout-callback': () => clearCaptcha('Vérification expirée. Cochez à nouveau la case.'),
+        'expired-callback': () => clearCaptcha('Vérification expirée. Cochez à nouveau la case.'),
+      });
+    } else {
+      window.turnstile.reset(captchaWidget);
+    }
+    window.turnstile.execute(captchaWidget);
+  } catch {
+    clearCaptcha('Vérification indisponible. Cochez à nouveau la case.');
+  }
+});
+
 contactForm.addEventListener('submit', async event => {
   event.preventDefault();
   const button = contactForm.querySelector('[type="submit"]');
-  const status = contactForm.querySelector('[role="status"]');
+  const status = contactForm.querySelector('.contact-status');
   if (button.disabled) return;
+  if (!captchaToken) {
+    status.textContent = captchaCheck.disabled
+      ? 'Attendez la fin de la vérification anti-robot.'
+      : 'Cochez la case de vérification anti-robot.';
+    return;
+  }
   button.disabled = true;
   status.textContent = 'Envoi en cours…';
   try {
-    const response = await fetch('api/contact.php', {method: 'POST', body: new FormData(contactForm)});
+    const body = new FormData(contactForm);
+    body.set('captcha_token', captchaToken);
+    const response = await fetch('api/contact.php', {method: 'POST', body});
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
     contactForm.reset();
@@ -147,6 +235,8 @@ contactForm.addEventListener('submit', async event => {
   } catch (error) {
     status.textContent = error.message || 'Envoi impossible. Réessayez.';
   } finally {
+    window.turnstile.reset(captchaWidget);
+    clearCaptcha();
     button.disabled = false;
   }
 });

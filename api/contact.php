@@ -47,8 +47,40 @@ function notifyTelegram(string $name, string $email, string $subject, string $me
     }
 }
 
+function verifyContactCaptcha(string $token, string $secret, string $hostname): bool {
+    $request = curl_init('https://challenges.cloudflare.com/turnstile/v0/siteverify');
+    if ($request === false) throw new RuntimeException('Turnstile request initialization failed');
+
+    try {
+        curl_setopt_array($request, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT_MS => 1500,
+            CURLOPT_TIMEOUT_MS => 4000,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
+            CURLOPT_POSTFIELDS => http_build_query(['secret' => $secret, 'response' => $token]),
+        ]);
+        $reply = curl_exec($request);
+        if ($reply === false || curl_getinfo($request, CURLINFO_HTTP_CODE) !== 200) {
+            throw new RuntimeException('Turnstile verification unavailable');
+        }
+
+        $result = json_decode($reply, true, 512, JSON_THROW_ON_ERROR);
+        return ($result['success'] ?? false) === true &&
+            ($result['action'] ?? '') === 'contact' &&
+            ($result['hostname'] ?? '') === $hostname;
+    } finally {
+        curl_close($request);
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $siteKey = config()['turnstile_site_key'] ?? '';
+    if ($siteKey === '') jsonResult(['error' => 'Vérification anti-robot indisponible.'], 503);
+    jsonResult(['siteKey' => $siteKey]);
+}
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Allow: POST');
+    header('Allow: GET, POST');
     jsonResult(['error' => 'Méthode non autorisée.'], 405);
 }
 if (field('website') !== '') jsonResult(['ok' => true]);
@@ -61,6 +93,23 @@ if ($name === '' || strlen($name) > 120 || strlen($email) > 254 ||
     strlen($message) < 10 || strlen($message) > 5000) {
     jsonResult(['error' => 'Vérifiez les champs du formulaire.'], 422);
 }
+$captchaToken = field('captcha_token');
+if ($captchaToken === '' || strlen($captchaToken) > 2048) {
+    jsonResult(['error' => 'Cochez la case de vérification anti-robot.'], 422);
+}
+try {
+    $settings = config();
+    $secret = $settings['turnstile_secret_key'] ?? '';
+    $hostname = $settings['turnstile_hostname'] ?? '';
+    if ($secret === '' || $hostname === '') throw new RuntimeException('Missing Turnstile configuration');
+    if (!verifyContactCaptcha($captchaToken, $secret, $hostname)) {
+        jsonResult(['error' => 'Vérification anti-robot refusée ou expirée. Cochez à nouveau la case.'], 422);
+    }
+} catch (Throwable $error) {
+    error_log('Trylob: vérification Turnstile indisponible.');
+    jsonResult(['error' => 'Vérification anti-robot indisponible. Réessayez plus tard.'], 503);
+}
+
 try {
     $db = db();
     $now = time();
