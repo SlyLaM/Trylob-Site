@@ -3,7 +3,7 @@
 1. Dans phpMyAdmin, sélectionnez la base OVH existante et importez `schema.sql`. Le script crée quatre tables préfixées `trylob_` et ne supprime aucune table.
 2. Déposez le contenu de cette archive à la racine du dépôt destiné à OVH. Depuis Windows, GitHub permet d’ajouter les fichiers via **Add file → Upload files**. Les fichiers doivent se trouver directement à la racine de la branche déployée. Pour garder les sources Cloudflare dans `main`, créez une branche dédiée `ovh` avec uniquement le contenu de cette archive, puis sélectionnez-la dans OVH.
 3. Dans OVH, associez le dépôt à un nouveau dossier racine vide, par exemple `trylob-web`. Gardez une copie de l’ancien site dans `www`. Pour un dépôt privé, utilisez la clé SSH d’OVH dans les Deploy keys du dépôt GitHub.
-4. Copiez `trylob-config.example.php` sur votre ordinateur et renommez la copie en `trylob-config.php`. Renseignez les coordonnées MySQL. Générez une clé d’accès aléatoire de 32 octets ou plus et inscrivez son SHA-256 hexadécimal dans `admin_hash`. Conservez la clé originale pour vous connecter. Sur Windows, PowerShell permet de générer la paire avec les commandes ci-dessous.
+4. Copiez `trylob-config.template.php` sur votre ordinateur et renommez la copie en `trylob-config.php`. Renseignez les coordonnées MySQL. Générez une clé d’accès aléatoire de 32 octets ou plus et inscrivez son SHA-256 hexadécimal dans `admin_hash`. Conservez la clé originale pour vous connecter. Sur Windows, PowerShell permet de générer la paire avec les commandes ci-dessous.
 5. Envoyez uniquement le fichier de configuration rempli par FTP au niveau parent de `trylob-web`, à côté de `www`. Il doit rester hors de tous les dossiers racines des sites et hors de GitHub.
 6. Déployez Git et ouvrez le site en HTTPS. Cliquez sur **Espace groupe** pour ajouter une date, configurer Bandcamp et lire les demandes de contact. Envoyez un message de test et vérifiez qu’il apparaît dans l’espace groupe.
 
@@ -23,4 +23,19 @@ Write-Output "Valeur admin_hash : $hash"
 ```
 
 L’espace groupe utilise une clé partagée. Les messages sont enregistrés en base et consultables dans cet espace. Il n’y a pas d’envoi d’e-mail. Les dates et messages éventuellement enregistrés sur Cloudflare restent dans D1 et doivent être repris séparément si nécessaire. Les deux dates historiques visibles dans le site sont déjà dans la page.
-#
+
+## CAPTCHA du formulaire de contact
+
+Avant de fusionner la PR ou de déployer le site sur OVH, créez un widget [Cloudflare Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile) en mode **Non-interactive** pour le domaine `trylob.band`. La case du formulaire lance la vérification.
+
+Ajoutez ces entrées au tableau du fichier `trylob-config.php` existant sur OVH, dans le dossier parent de la racine du site.
+
+```php
+'turnstile_site_key' => 'clé publique du widget',
+'turnstile_secret_key' => 'clé secrète du widget',
+'turnstile_hostname' => 'trylob.band',
+```
+
+Indiquez le nom d’hôte utilisé par les visiteurs, sans protocole ni chemin. Si l’hébergement répond aussi sur un alias, redirigez-le vers le nom d’hôte configuré. Le fichier de configuration rempli doit rester hors de la racine publique et de Git. PHP utilise l’extension cURL pour joindre `challenges.cloudflare.com` en HTTPS. Le formulaire refuse les envois lorsque la vérification est indisponible.
+
+Après déploiement, ouvrez le formulaire sans cocher la case et vérifiez que l’envoi est bloqué. Cochez ensuite la case, attendez la confirmation de la vérification et envoyez un message de test. Vérifiez sa présence dans l’espace groupe et dans Telegram si la notification est activée.
