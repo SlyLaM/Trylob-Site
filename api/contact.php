@@ -47,6 +47,31 @@ function notifyTelegram(string $name, string $email, string $subject, string $me
     }
 }
 
+function notifyContactEmail(string $name, string $email, string $subject, string $message): void {
+    try {
+        $from = config()['contact_mail_from'] ?? 'no-reply@trylob.band';
+        if (!is_string($from) || !filter_var($from, FILTER_VALIDATE_EMAIL)) {
+            throw new RuntimeException('Invalid contact email sender');
+        }
+
+        $body = "Nom : {$name}\r\nE-mail : {$email}\r\nObjet : {$subject}\r\n\r\n{$message}";
+        $headers = [
+            'From' => $from,
+            'Reply-To' => $email,
+            'MIME-Version' => '1.0',
+            'Content-Type' => 'text/plain; charset=UTF-8',
+            'Content-Transfer-Encoding' => 'base64',
+        ];
+
+        if (!mail('trylobmusic@gmail.com', '[TRYLOB] Nouveau message du formulaire',
+            chunk_split(base64_encode($body)), $headers)) {
+            throw new RuntimeException('Contact email rejected');
+        }
+    } catch (Throwable $error) {
+        error_log('Trylob: notification e-mail non envoyée.');
+    }
+}
+
 function verifyContactCaptcha(string $token, string $secret, string $hostname): bool {
     $request = curl_init('https://challenges.cloudflare.com/turnstile/v0/siteverify');
     if ($request === false) throw new RuntimeException('Turnstile request initialization failed');
@@ -126,6 +151,7 @@ try {
     $db->prepare('INSERT INTO trylob_messages (name, email, subject, message) VALUES (?, ?, ?, ?)')->execute([$name, $email, $subject, $message]);
     $db->commit();
     notifyTelegram($name, $email, $subject, $message);
+    notifyContactEmail($name, $email, $subject, $message);
     jsonResult(['ok' => true]);
 } catch (Throwable $error) {
     if (isset($db) && $db->inTransaction()) $db->rollBack();

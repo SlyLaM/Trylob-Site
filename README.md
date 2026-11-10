@@ -22,7 +22,7 @@ Write-Output "Clé à conserver : $key"
 Write-Output "Valeur admin_hash : $hash"
 ```
 
-L’espace groupe utilise une clé partagée. Les messages sont enregistrés en base et consultables dans cet espace. Il n’y a pas d’envoi d’e-mail. Les dates et messages éventuellement enregistrés sur Cloudflare restent dans D1 et doivent être repris séparément si nécessaire. Les deux dates historiques visibles dans le site sont déjà dans la page.
+L’espace groupe utilise une clé partagée. Les messages sont enregistrés en base et consultables dans cet espace. Les dates et messages éventuellement enregistrés sur Cloudflare restent dans D1 et doivent être repris séparément si nécessaire. Les deux dates historiques visibles dans le site sont déjà dans la page.
 
 ## CAPTCHA du formulaire de contact
 
@@ -39,3 +39,11 @@ Ajoutez ces entrées au tableau du fichier `trylob-config.php` existant sur OVH,
 Indiquez le nom d’hôte utilisé par les visiteurs, sans protocole ni chemin. Si l’hébergement répond aussi sur un alias, redirigez-le vers le nom d’hôte configuré. Le fichier de configuration rempli doit rester hors de la racine publique et de Git. PHP utilise l’extension cURL pour joindre `challenges.cloudflare.com` en HTTPS. Le formulaire refuse les envois lorsque la vérification est indisponible.
 
 Après déploiement, ouvrez le formulaire sans cocher la case et vérifiez que l’envoi est bloqué. Cochez ensuite la case, attendez la confirmation de la vérification et envoyez un message de test. Vérifiez sa présence dans l’espace groupe et dans Telegram si la notification est activée.
+
+## Notifications du formulaire
+
+Après enregistrement, une copie est envoyée à `trylobmusic@gmail.com` via la fonction PHP `mail()` d’OVH, en plus de la notification Telegram si elle est configurée. Le bouton « Répondre » dans Gmail utilise l’adresse saisie par le visiteur.
+
+L’expéditeur par défaut est `no-reply@trylob.band`. Si vous utilisez une autre adresse d’envoi pour ce domaine, ajoutez `'contact_mail_from' => 'adresse@trylob.band'` dans `trylob-config.php` sur OVH.
+
+Après déploiement, envoyez un message de test et vérifiez sa réception dans Gmail et Telegram ainsi que sa présence dans l’espace groupe. En cas de problème de réception, consultez le dossier Spam et le suivi des e-mails automatisés de l’hébergement OVH. Un échec de notification laisse le message accessible dans l’espace groupe.
