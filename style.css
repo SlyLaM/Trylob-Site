@@ -129,7 +129,7 @@ footer .brand{height:auto;aspect-ratio:1116/205}
 .social-link{display:grid;place-items:center;width:34px;height:34px;color:#dedede;border:1px solid #ffffff30;transition:color .2s,border-color .2s}
 .social-link svg{display:block;width:18px;height:18px;fill:currentColor}
 .social-youtube:hover{color:var(--red);border-color:var(--red)}
-.social-instagram:hover{color:var(--yellow);border-color:var(--yellow)}
+.social-instagram:hover{color:#e1306c;border-color:currentColor}
 .social-facebook:hover{color:var(--blue);border-color:var(--blue)}
 .social-bandcamp:hover{color:var(--green);border-color:var(--green)}
 .site-footer .group-access{padding:12px 0;font-size:14px}
