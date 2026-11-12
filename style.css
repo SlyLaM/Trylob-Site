@@ -162,3 +162,37 @@ footer .brand{height:auto;aspect-ratio:1116/205}
   accent-color: var(--yellow);
 }
 #contact-captcha-status:empty { margin: 0 }
+
+.group-social {
+  margin-top: 30px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.group-social-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.group-social-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid #ffffff40;
+  background: #080808;
+  font-size: 14px;
+}
+.group-social-link:hover { border-color: #ffffffa0; }
+.group-social-link svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  fill: currentColor;
+}
+.group-social-youtube svg { color: #ff0033; }
+.group-social-facebook svg { color: #0866ff; }
+.group-social-bandcamp svg { color: #1da0c3; }
