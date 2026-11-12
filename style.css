@@ -68,6 +68,7 @@ body{padding-top:var(--header-h)}
 body>header{position:fixed;top:0;left:0;right:0;margin:0}
 .hero-media{top:var(--header-h);margin:0;padding:0;pointer-events:none}
 .video-space{margin:0;padding:0}
+.background-play{position:absolute;left:5%;bottom:12px;z-index:2;pointer-events:auto;min-height:44px;padding:6px 14px;border:1px solid #aaa;background:#080808;color:var(--ink);font-size:14px}
 /* Dark translucent layers preserve both the moving image and text contrast. */
 :root{--muted:#d0d0d0;--line:rgba(255,255,255,.22)}
 .hero-top,.hero-content,.about,.dates{background:rgba(5,7,10,.63)}

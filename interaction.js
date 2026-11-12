@@ -2,6 +2,7 @@
 const root=document.querySelector("#entrance");
   if(!root)return;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
+  const skipButton = root.querySelector('.entrance-skip');
   const animations=[];
   const timers=[];
   const content=Array.from(document.querySelectorAll('header,main,footer'));
@@ -18,16 +19,18 @@ const root=document.querySelector("#entrance");
    content.forEach((node,i)=>{node.inert=previous[i]});
    root.hidden=true;
    document.removeEventListener("keydown",onKey);
-   reduced.removeEventListener("change",onMotion);
+   if (reduced.removeEventListener) reduced.removeEventListener("change",onMotion);
+   else reduced.removeListener(onMotion);
    if(restoreFocus)document.querySelector('header .brand')?.focus({preventScroll:true});
   };
-  root.querySelector("button").addEventListener("click",finish);
+  skipButton.addEventListener("click",finish);
   const onKey=(event)=>{if(event.key==='Escape')finish()};
   const onMotion=()=>{if(reduced.matches)finish()};
   document.addEventListener('keydown',onKey);
-  reduced.addEventListener('change',onMotion);
-  // Hash links and reduced motion open straight on the content.
-  if(reduced.matches||window.location.hash){finish()}
+  if (reduced.addEventListener) reduced.addEventListener('change',onMotion);
+  else reduced.addListener(onMotion);
+  const sectionLink = window.location.hash && window.location.hash !== '#accueil';
+  if(reduced.matches||sectionLink){finish()}
   else{
    root.hidden=false;
    document.documentElement.classList.add('intro-running');
