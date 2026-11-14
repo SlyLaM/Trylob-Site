@@ -47,3 +47,11 @@ Après enregistrement, une copie est envoyée à `trylobmusic@gmail.com` via la 
 L’expéditeur par défaut est `no-reply@trylob.band`. Si vous utilisez une autre adresse d’envoi pour ce domaine, ajoutez `'contact_mail_from' => 'adresse@trylob.band'` dans `trylob-config.php` sur OVH.
 
 Après déploiement, envoyez un message de test et vérifiez sa réception dans Gmail et Telegram ainsi que sa présence dans l’espace groupe. En cas de problème de réception, consultez le dossier Spam et le suivi des e-mails automatisés de l’hébergement OVH. Un échec de notification laisse le message accessible dans l’espace groupe.
+
+## Vidéo de fond
+
+Dans **Espace groupe → Vidéo de fond**, importez un fichier MP4 (H.264 recommandé), choisissez-le dans le menu et cliquez sur **Appliquer au site**. La taille maximale est affichée dans le formulaire à partir des limites PHP de l’hébergement, avec un plafond de 100 Mo. Le formulaire permet aussi de revenir à la vidéo d’origine ou d’afficher l’image fixe.
+
+La suppression retire le fichier importé du serveur. Si la vidéo était active, le site revient à la vidéo d’origine. Le choix utilise la table de réglages existante. Le serveur crée le dossier `uploads/background-videos/` au premier import, et les fichiers sont stockés sur OVH. Incluez ce dossier dans les sauvegardes et conservez-le si vous remplacez le dossier de déploiement.
+
+Après déploiement, connectez-vous à l’espace groupe, importez un petit MP4, appliquez-le puis ouvrez la page publique. Supprimez ensuite cette vidéo et vérifiez que la vidéo d’origine revient.

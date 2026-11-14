@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/bootstrap.php';
+require __DIR__ . '/background-videos.php';
 header('Cache-Control: no-store');
 session_set_cookie_params(['secure' => true, 'httponly' => true, 'samesite' => 'Strict']);
 session_start();
@@ -7,11 +8,18 @@ $_SESSION['csrf'] ??= bin2hex(random_bytes(32));
 $csrf = $_SESSION['csrf'];
 $loggedIn = $_SESSION['authenticated'] ?? false;
 $error = '';
+$videoActions = ['upload_video', 'select_video', 'remove_video'];
+$action = '';
 $concerts = $messages = $settings = [];
 $today = (new DateTimeImmutable('today', new DateTimeZone('Europe/Paris')))->format('Y-m-d');
-$links = ['clip' => 'Clip YouTube', 'instagram' => 'Instagram', 'facebook' => 'Facebook', 'bandcamp' => 'Bandcamp', 'background' => 'Vidéo de fond'];
+$links = ['clip' => 'Clip YouTube', 'instagram' => 'Instagram', 'facebook' => 'Facebook', 'bandcamp' => 'Bandcamp'];
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($loggedIn && empty($_POST) && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0 &&
+            str_starts_with($_SERVER['CONTENT_TYPE'] ?? '', 'multipart/form-data')) {
+            $action = 'upload_video';
+            throw new DomainException('Le transfert dépasse la taille autorisée par l’hébergement.');
+        }
         if (!hash_equals($csrf, field('csrf'))) {
             http_response_code(403);
             exit('Session expirée. Rechargez la page.');
@@ -48,6 +56,25 @@ try {
             db()->prepare('DELETE FROM trylob_concerts WHERE id=?')->execute([(int)field('id')]);
         } elseif ($action === 'remove_message') {
             db()->prepare('DELETE FROM trylob_messages WHERE id=?')->execute([(int)field('id')]);
+        } elseif ($action === 'upload_video') {
+            uploadBackgroundVideo($_FILES['video'] ?? []);
+        } elseif ($action === 'select_video') {
+            $choice = field('background_video');
+            if ($choice === 'legacy') {
+                $query = db()->query("SELECT value FROM trylob_settings WHERE name='background'");
+                if (!webUrl((string)$query->fetchColumn())) throw new DomainException('Ce lien n’est plus disponible.');
+                $choice = '';
+            } elseif (!in_array($choice, ['default', 'poster'], true) && !backgroundVideoExists($choice)) {
+                throw new DomainException('Cette vidéo n’est plus disponible.');
+            }
+            $query = db()->prepare('INSERT INTO trylob_settings (name, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value=?');
+            $query->execute(['background_video', $choice, $choice]);
+        } elseif ($action === 'remove_video') {
+            $file = field('background_video');
+            if (!backgroundVideoExists($file)) throw new DomainException('Seules les vidéos importées peuvent être supprimées.');
+            if (!@unlink(BACKGROUND_VIDEO_DIRECTORY . '/' . $file)) {
+                throw new DomainException('Impossible de supprimer cette vidéo. Rechargez la page et réessayez.');
+            }
         } elseif ($action === 'settings') {
             $values = [];
             foreach ($links as $key => $label) {
@@ -63,13 +90,21 @@ try {
             foreach ($values as $key => $value) $query->execute([$key, $value, $value]);
             $db->commit();
         }
-        header($action === 'remove_message' ? 'Location: admin.php#messages' : 'Location: admin.php', true, 303);
+        $location = match ($action) {
+            'remove_message' => 'admin.php#messages',
+            'upload_video' => 'admin.php?video=uploaded#background-videos',
+            'select_video' => 'admin.php?video=selected#background-videos',
+            'remove_video' => 'admin.php?video=removed#background-videos',
+            default => 'admin.php',
+        };
+        header('Location: ' . $location, true, 303);
         exit;
     }
 } catch (DomainException $problem) {
     $error = $problem->getMessage();
 } catch (Throwable $problem) {
     if (isset($db) && $db->inTransaction()) $db->rollBack();
+    error_log('Trylob espace groupe : ' . $problem->getMessage());
     $error = 'Action impossible. Vérifiez la configuration.';
 }
 if ($loggedIn) {
@@ -91,7 +126,7 @@ if ($loggedIn) {
 <style>
 body{background:#101010;color:#eee;font:16px system-ui;margin:2rem auto;max-width:62rem;padding:0 1rem}
 a{color:#ffda2d} form,article{border:1px solid #444;padding:1rem;margin:1rem 0}
-label{display:block;margin-bottom:.65rem} input{display:block;width:min(100%,36rem);padding:.4rem;box-sizing:border-box}
+label{display:block;margin-bottom:.65rem} input,select{display:block;width:min(100%,36rem);padding:.4rem;box-sizing:border-box}
 button{padding:.5rem .8rem;cursor:pointer} .message{white-space:pre-wrap;overflow-wrap:anywhere}
 .message-actions{display:flex;justify-content:flex-end;margin:.75rem 0 0;padding:0;border:0}
 .message-actions button{background:transparent;color:#ffaaaa;border:1px solid #995050;border-radius:4px;font:inherit;font-size:.875rem}
@@ -103,7 +138,7 @@ button{padding:.5rem .8rem;cursor:pointer} .message{white-space:pre-wrap;overflo
 </style>
 <a href="./">Retour au site</a>
 <h1>Espace groupe</h1>
-<?php if ($error !== ''): ?><p role="alert"><?= h($error) ?></p><?php endif ?>
+<?php if ($error !== '' && !in_array($action, $videoActions, true)): ?><p role="alert"><?= h($error) ?></p><?php endif ?>
 <?php if (!$loggedIn): ?>
 <form method="post">
     <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
@@ -165,6 +200,61 @@ document.getElementById('new-concert').addEventListener('submit', event => {
     <?php endforeach ?>
     <button name="action" value="settings">Enregistrer les liens</button>
 </form>
+<h2 id="background-videos">Vidéo de fond</h2>
+<?php
+$videos = backgroundVideoFiles();
+$choice = backgroundVideoChoice($settings);
+$limit = backgroundVideoLimit();
+$notice = match ($_GET['video'] ?? '') {
+    'uploaded' => 'Vidéo importée. Sélectionnez-la ci-dessous pour l’afficher sur le site.',
+    'selected' => 'Fond du site mis à jour.',
+    'removed' => 'Vidéo supprimée.',
+    default => '',
+};
+?>
+<?php if ($error !== '' && in_array($action, $videoActions, true)): ?><p role="alert"><?= h($error) ?></p><?php endif ?>
+<?php if ($error === '' && $notice !== ''): ?><p role="status"><?= h($notice) ?></p><?php endif ?>
+<?php if ($limit > 0): ?>
+<form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+    <label>Fichier MP4 <input type="file" name="video" accept=".mp4,video/mp4" required></label>
+    <p>Maximum <?= h(number_format($limit / (1024 ** 2), 1, ',', ' ')) ?> Mo. Format conseillé : MP4 (H.264).</p>
+    <input type="hidden" name="action" value="upload_video">
+    <button>Importer la vidéo</button>
+</form>
+<?php else: ?>
+<p>L’envoi de fichiers est indisponible sur cet hébergement.</p>
+<?php endif ?>
+<form method="post">
+    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+    <label>Vidéo affichée sur le site
+        <select name="background_video">
+            <option value="default"<?= $choice === 'default' ? ' selected' : '' ?>>Vidéo d’origine</option>
+            <option value="poster"<?= $choice === 'poster' ? ' selected' : '' ?>>Image fixe</option>
+            <?php if (webUrl($settings['background'] ?? '')): ?>
+            <option value="legacy"<?= $choice === 'legacy' ? ' selected' : '' ?>>Vidéo configurée par lien</option>
+            <?php endif ?>
+            <?php foreach ($videos as $file => $name): ?>
+            <option value="<?= h($file) ?>"<?= $choice === $file ? ' selected' : '' ?>><?= h($name) ?></option>
+            <?php endforeach ?>
+        </select>
+    </label>
+    <button name="action" value="select_video">Appliquer au site</button>
+</form>
+<?php if ($videos): ?>
+<form method="post" onsubmit="return confirm('Supprimer définitivement cette vidéo ? Si elle est active, le site revient à la vidéo d’origine.')">
+    <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+    <label>Vidéo importée à supprimer
+        <select name="background_video" required>
+            <option value="" selected disabled>Choisir une vidéo</option>
+            <?php foreach ($videos as $file => $name): ?>
+            <option value="<?= h($file) ?>"><?= h($name) ?><?= $choice === $file ? ' (active)' : '' ?></option>
+            <?php endforeach ?>
+        </select>
+    </label>
+    <button name="action" value="remove_video">Supprimer la vidéo</button>
+</form>
+<?php endif ?>
 <h2 id="messages">Messages reçus</h2>
 <?php if (!$messages): ?><p>Aucun message.</p><?php endif ?>
 <?php foreach ($messages as $message): ?>

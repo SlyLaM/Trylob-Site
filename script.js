@@ -23,12 +23,17 @@ const menu=document.querySelector('.menu');const nav=document.querySelector('nav
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
 const backgroundVideo = document.querySelector('#background-video');
 const playButton = document.querySelector('.background-play');
-const defaultVideoUrl = backgroundVideo.querySelector('source').src;
+const defaultVideoUrl = new URL(backgroundVideo.dataset.defaultVideo, document.baseURI).href;
+let posterOnly = true;
 let manualPlayback = false;
 let playbackRequest = 0;
 
 async function syncPlayback() {
   const request = ++playbackRequest;
+  if (posterOnly) {
+    playButton.hidden = true;
+    return;
+  }
   if (document.hidden || (reduced.matches && !manualPlayback)) {
     backgroundVideo.pause();
     playButton.hidden = document.hidden;
@@ -56,24 +61,26 @@ const onVideoMotionChange = () => {
 };
 if (reduced.addEventListener) reduced.addEventListener('change', onVideoMotionChange);
 else reduced.addListener(onVideoMotionChange);
-void syncPlayback();
 function concertRow(c,past){const row=document.createElement(c.url?'a':'div');row.className='date-row';if(c.url){row.href=c.url;row.target='_blank';row.rel='noopener'}const time=document.createElement('time');time.dateTime=c.date;const strong=document.createElement('strong');strong.textContent=c.date.slice(8,10)+'.'+c.date.slice(5,7);time.append(strong,document.createTextNode(c.date.slice(0,4)));const info=document.createElement('div'),title=document.createElement('h4'),city=document.createElement('p');title.textContent=c.venue;city.textContent=c.city;info.append(title,city);const status=document.createElement('span');status.className='past';status.textContent=past?'PASSÉ':c.url?'INFOS':'À VENIR';row.append(time,info,status);return row}
 async function loadSite(){let settings={};try{const r=await fetch('api/public.php');if(!r.ok)throw Error('Unavailable');const d=await r.json();settings=d.settings;const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Paris'}).format(new Date());const future=d.concerts.filter(c=>c.date>=today),past=d.concerts.filter(c=>c.date<today).reverse();const upcoming=document.querySelector('#upcoming-concerts');if(future.length){const title=document.createElement('h3');title.textContent='PROCHAINES DATES';upcoming.append(title,...future.map(c=>concertRow(c,false)))}document.querySelector('#added-past-concerts').append(...past.map(c=>concertRow(c,true)));document.querySelectorAll('[data-clip-link]').forEach(a=>{if(settings.clip)a.href=settings.clip});document.querySelectorAll('[data-social]').forEach(a=>{if(settings[a.dataset.social]){a.href=settings[a.dataset.social];a.hidden=false}})}catch{const note=document.createElement('p');note.textContent='Les prochaines dates sont momentanément indisponibles. Réessayez plus tard.';document.querySelector('#upcoming-concerts').append(note)}
- if (settings.background) {
-  let configuredVideoUrl;
-  try {
-    configuredVideoUrl = new URL(settings.background, document.baseURI).href;
-  } catch {
-    return;
-  }
-  if (configuredVideoUrl === defaultVideoUrl) return;
-  backgroundVideo.addEventListener('error', () => {
-    backgroundVideo.src = defaultVideoUrl;
-    void syncPlayback();
-  }, {once: true});
-  backgroundVideo.src = configuredVideoUrl;
-  void syncPlayback();
- }
+  if (settings.backgroundPosterOnly) return;
 
+  posterOnly = false;
+  let url = defaultVideoUrl;
+  if (settings.background) {
+    try {
+      url = new URL(settings.background, document.baseURI).href;
+    } catch {
+      // An invalid legacy link must not prevent the default video from playing.
+    }
+  }
+  if (url !== defaultVideoUrl) {
+    backgroundVideo.addEventListener('error', () => {
+      backgroundVideo.src = defaultVideoUrl;
+      void syncPlayback();
+    }, {once: true});
+  }
+  backgroundVideo.src = url;
+  void syncPlayback();
 }
 loadSite();
