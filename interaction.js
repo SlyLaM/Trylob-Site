@@ -22,6 +22,7 @@ const root=document.querySelector("#entrance");
    if (reduced.removeEventListener) reduced.removeEventListener("change",onMotion);
    else reduced.removeListener(onMotion);
    if(restoreFocus)document.querySelector('header .brand')?.focus({preventScroll:true});
+   document.dispatchEvent(new Event('trylob:intro-finished'));
   };
   skipButton.addEventListener("click",finish);
   const onKey=(event)=>{if(event.key==='Escape')finish()};
@@ -54,16 +55,17 @@ const root=document.querySelector("#entrance");
      const from=mark.getBoundingClientRect(),to=target.getBoundingClientRect();
      const scaleX = to.width / from.width;
      const scaleY = to.height / from.height;
-     animations.push(mark.animate([
+     const closingAnimations = [mark.animate([
       {transform:'translate(-50%,-50%) scale(1)'},
       {transform:`translate(calc(-50% + ${to.left-from.left}px),calc(-50% + ${to.top-from.top}px)) scale(${scaleX}, ${scaleY})`}
-     ],{duration:1100,easing:'cubic-bezier(.76,0,.24,1)',fill:'forwards'}));
+     ],{duration:1100,easing:'cubic-bezier(.76,0,.24,1)',fill:'forwards'})];
      root.querySelectorAll('.entrance-shutter').forEach((shutter,i)=>{
-      animations.push(shutter.animate([{transform:'translateX(0)'},{transform:`translateX(${i%2===0?'-':''}102%)`}],{duration:1050,delay:i*35,easing:'cubic-bezier(.76,0,.24,1)',fill:'forwards'}));
+      closingAnimations.push(shutter.animate([{transform:'translateX(0)'},{transform:`translateX(${i%2===0?'-':''}102%)`}],{duration:1050,delay:i*35,easing:'cubic-bezier(.76,0,.24,1)',fill:'forwards'}));
      });
      const button=root.querySelector('button');
      if(button)animations.push(button.animate([{opacity:1},{opacity:0}],{duration:220,fill:'forwards'}));
-     timers.push(setTimeout(finish,1350));
+     animations.push(...closingAnimations);
+     void Promise.all(closingAnimations.map(animation => animation.finished)).then(finish, finish);
     },1300));
    };
    void start().catch(finish);

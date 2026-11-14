@@ -30,7 +30,7 @@ let playbackRequest = 0;
 
 async function syncPlayback() {
   const request = ++playbackRequest;
-  if (posterOnly) {
+  if (posterOnly || document.documentElement.classList.contains('intro-running')) {
     playButton.hidden = true;
     return;
   }
@@ -53,6 +53,7 @@ playButton.addEventListener('click', () => {
   manualPlayback = true;
   void syncPlayback();
 });
+document.addEventListener('trylob:intro-finished', syncPlayback, {once: true});
 document.addEventListener('visibilitychange', syncPlayback);
 window.addEventListener('pageshow', syncPlayback);
 const onVideoMotionChange = () => {
