@@ -23,10 +23,37 @@ const menu=document.querySelector('.menu');const nav=document.querySelector('nav
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
 const backgroundVideo = document.querySelector('#background-video');
 const playButton = document.querySelector('.background-play');
+const posterFold = document.querySelector('.background-poster-fold');
+const posterUrl = backgroundVideo.getAttribute('poster');
+let posterTransition;
 const defaultVideoUrl = new URL(backgroundVideo.dataset.defaultVideo, document.baseURI).href;
 let posterOnly = true;
 let manualPlayback = false;
 let playbackRequest = 0;
+
+async function foldBackgroundPoster() {
+  if (reduced.matches || !posterFold.animate) return;
+
+  const media = backgroundVideo.parentElement;
+  const shutters = [...posterFold.children];
+  posterFold.hidden = false;
+  media.classList.add('is-folding');
+  const animations = shutters.map((shutter, index) => shutter.animate(
+    [{transform: 'translateY(0)'}, {transform: `translateY(${index === 0 ? '-50%' : '50%'})`}],
+    {duration: 450, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards'}
+  ));
+  const finish = () => animations.forEach(animation => animation.finish());
+  reduced.addEventListener?.('change', finish, {once: true});
+  try {
+    await Promise.allSettled(animations.map(animation => animation.finished));
+  } finally {
+    reduced.removeEventListener?.('change', finish);
+    backgroundVideo.removeAttribute('poster');
+    posterFold.hidden = true;
+    media.classList.remove('is-folding');
+    animations.forEach(animation => animation.cancel());
+  }
+}
 
 async function syncPlayback() {
   const request = ++playbackRequest;
@@ -40,12 +67,23 @@ async function syncPlayback() {
     return;
   }
 
+  // All playback triggers share one fold. Keep manual playback synchronous
+  // when the browser requires a click to start the video.
+  if (!manualPlayback) {
+    posterTransition ??= foldBackgroundPoster();
+    await posterTransition;
+    if (request !== playbackRequest || document.hidden) return;
+  }
+
   backgroundVideo.muted = true;
   try {
     await backgroundVideo.play();
     if (request === playbackRequest) playButton.hidden = true;
   } catch {
-    if (request === playbackRequest) playButton.hidden = false;
+    if (request === playbackRequest) {
+      backgroundVideo.setAttribute('poster', posterUrl);
+      playButton.hidden = false;
+    }
   }
 }
 

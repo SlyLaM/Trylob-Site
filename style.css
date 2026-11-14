@@ -196,3 +196,9 @@ footer .brand{height:auto;aspect-ratio:1116/205}
 .group-social-youtube svg { color: #ff0033; }
 .group-social-facebook svg { color: #0866ff; }
 .group-social-bandcamp svg { color: #1da0c3; }
+
+.background-poster-fold{position:absolute;inset:0}
+.background-poster-fold img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:top center}
+.background-poster-fold img:first-child{clip-path:inset(0 0 50% 0)}
+.background-poster-fold img:last-child{clip-path:inset(50% 0 0 0)}
+.hero-media.is-folding video{visibility:hidden}
